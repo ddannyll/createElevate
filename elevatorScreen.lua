@@ -24,7 +24,6 @@ local function loop()
             rednet.broadcast(textutils.serialiseJSON(messageToSend), SCREEN_PROTOCOL_FILTER)
         end
         sleep(0.05)
-        rednet.send()
     end
 end
 

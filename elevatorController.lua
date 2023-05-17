@@ -65,7 +65,6 @@ local function setup()
     end
 
     print(string.format('Finsihed Setup.\n Floors: %s', textutils.serialise(floors)))
-    rednet.broadcast(textutils.serialiseJSON(floors), SCREEN_PROTOCOL_FILTER)
 end
 
 local function listen ()
@@ -118,6 +117,7 @@ local function loop()
                 redstone.setOutput(GEAR_SHIFT_FACE, not GEAR_SHIFT_ON_IS_UP)
                 redstone.setOutput(CLUTCH_FACE, false)
             end
+            rednet.broadcast(textutils.serialiseJSON(floors), SCREEN_PROTOCOL_FILTER)
             sleep(0.05)
         end
     end
