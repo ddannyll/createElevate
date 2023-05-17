@@ -70,6 +70,7 @@ end
 local function listen ()
     while true do
         local senderId, message = rednet.receive(PROTOCOL_FILTER)
+        print(message)
         message = textutils.unserializeJSON(message)
         local senderFloor = message.floor
         local senderIsRequesting = message.requesting

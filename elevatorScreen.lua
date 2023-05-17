@@ -21,7 +21,7 @@ local function loop()
                 floor = selected,
                 requesting = true
             }
-            rednet.broadcast(textutils.serialiseJSON(messageToSend), SCREEN_PROTOCOL_FILTER)
+            rednet.broadcast(textutils.serialiseJSON(messageToSend), PROTOCOL_FILTER)
         end
         sleep(0.05)
     end
