@@ -72,14 +72,16 @@ local function listen ()
         local senderId, message = rednet.receive(PROTOCOL_FILTER)
         print(message)
         message = textutils.unserializeJSON(message)
-        local senderFloor = message.floor
-        local senderIsRequesting = message.requesting
-        local elevatorIsAtFloor = message.elevatorIsAtFloor
-        if senderIsRequesting then
-            targetFloor = senderFloor
-        end
-        if elevatorIsAtFloor then
-            currFloor = senderFloor
+        if message then
+            local senderFloor = message.floor
+            local senderIsRequesting = message.requesting
+            local elevatorIsAtFloor = message.elevatorIsAtFloor
+            if senderIsRequesting and senderFloor ~= currFloor then
+                targetFloor = senderFloor
+            end
+            if elevatorIsAtFloor then
+                currFloor = senderFloor
+            end
         end
     end
 end
