@@ -31,7 +31,10 @@ local function listen()
     while true do
         local sender, message = rednet.receive(SCREEN_PROTOCOL_FILTER)
         message = textutils.unserialiseJSON(message)
-        floors = message
+        floors = {}
+        for _, floor in pairs(message) do
+            floors[floor] = true
+        end
     end
 end
 
