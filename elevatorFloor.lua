@@ -1,9 +1,9 @@
 REDSTONE_CONTACT_FACE = 'BACK'
+IS_TOP = false
+IS_BOTTOM = false
 PROTOCOL_FILTER = 'ELEVATOR'
 MODEM_FACE = 'TOP'
 SETUP_PROTOCOL_FILTER = 'ELEVATOR_SETUP'
-IS_TOP = false
-IS_BOTTOM = false
 COMPUTER_ID = os.getComputerID()
 HOST_NAME = 'BRAIN'
 
@@ -17,30 +17,32 @@ local function setup()
         print('Controller not found. Aborting...')
         return false
     end
-    
-    local finishSetup = false
-    while not finishSetup do
-        local isContacting = redstone.getInput(REDSTONE_CONTACT_FACE)
-        print('not contacting')
-        if isContacting then
-            print('contacting')
-            local messageToSend = {
-                computerId = COMPUTER_ID,
-                isBottom = IS_BOTTOM,
-                isTop = IS_TOP
-            }
-            rednet.send(CONTROLLER_ID, textutils.serialiseJSON(messageToSend), SETUP_PROTOCOL_FILTER)
-            print('waiting for message')
-            local senderId, message = rednet.receive(SETUP_PROTOCOL_FILTER)
-            message = textutils.unserialiseJSON(message)
-            print(textutils.serialise(message))
-            if message.setFloor then
-                finishSetup = true
-                floor = message.setFloor
+
+    local function contactWatcher()
+        while true do
+            local isContacting = redstone.getInput(REDSTONE_CONTACT_FACE)
+            if isContacting then
+                print('contacting')
+                local messageToSend = {
+                    computerId = COMPUTER_ID,
+                    isBottom = IS_BOTTOM,
+                    isTop = IS_TOP
+                }
+                rednet.send(CONTROLLER_ID, textutils.serialiseJSON(messageToSend), SETUP_PROTOCOL_FILTER)
             end
         end
-        sleep(0.05)
     end
+
+    local function rednetListener()
+        print('waiting for message')
+        local senderId, message = rednet.receive(SETUP_PROTOCOL_FILTER)
+        floor = message.setFloor
+        print('we are floor')
+        print(floor)
+    end
+
+    parallel.waitForAny(rednetListener, contactWatcher)
+
     return true
 end
 
