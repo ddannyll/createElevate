@@ -3,16 +3,38 @@ MODEM_FACE = 'FRONT'
 
 rednet.open(MODEM_FACE)
 local floors = {}
-while true do
-    print(string.format('Please enter a floor: %s', floors))
-    local selected = tonumber(read())
-    if floors[selected] then
-        local messageToSend = {
-            floor = selected,
-            requesting = true
-        }
-        rednet.broadcast(textutils.serialiseJSON(messageToSend), SCREEN_PROTOCOL_FILTER)
+
+local function getFloorsAsString(floors)
+    local str = ""
+    for key, _ in pairs(floors) do
+        str = str .. ', '.. key
     end
-    sleep(0.05)
-    rednet.send()
+    return str
 end
+
+local function loop()
+    while true do
+        print(string.format('Please enter a floor: %s', getFloorsAsString(floors)))
+        local selected = tonumber(read())
+        if floors[selected] then
+            local messageToSend = {
+                floor = selected,
+                requesting = true
+            }
+            rednet.broadcast(textutils.serialiseJSON(messageToSend), SCREEN_PROTOCOL_FILTER)
+        end
+        sleep(0.05)
+        rednet.send()
+    end
+end
+
+local function listen()
+    while true do
+        local sender, message = rednet.receive(SCREEN_PROTOCOL_FILTER)
+        message = textutils.unserialiseJSON(message)
+        floors = message
+    end
+end
+
+parallel.waitForAll(loop, listen)
+
