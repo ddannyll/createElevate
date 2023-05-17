@@ -2,29 +2,101 @@ MODEM_FACE = 'TOP'
 CLUTCH_FACE = 'LEFT'
 GEAR_SHIFT_FACE = 'RIGHT'
 GEAR_SHIFT_ON_IS_UP = true
+PROTOCOL_FILTER = 'ELEVATOR'
+SETUP_PROTOCOL_FILTER = 'ELEVATOR_SETUP'
+HOST_NAME = 'BRAIN'
 
 local state = 'idle'
 local currFloor = nil
-local floors = {'G', '-1', '-2'}
+local targetFloor = nil
+local floors = {}
 -- state can be idle, up, down
 
 -- MAIN FUNCTIONS --
-local function listen ()
-    rednet.open(MODEM_FACE)
-    local received = rednet.receive()
-    print(received)
-end
+
 
 local function setup()
-    redstone.setOutput(GEAR_SHIFT_FACE, false)
-    redstone.setOutput(CLUTCH_FACE, true)
-    -- validate floor level
-    -- go to top floor
+    print('enter to setup')
+    read()
+
+    rednet.open(MODEM_FACE)
+    rednet.host(PROTOCOL_FILTER, HOST_NAME)
+    rednet.host(SETUP_PROTOCOL_FILTER, HOST_NAME)
+    redstone.setOutput(GEAR_SHIFT_FACE, GEAR_SHIFT_ON_IS_UP)
+    redstone.setOutput(CLUTCH_FACE, false)
+
     
+    local foundTop = false
+    while not foundTop do
+        local senderId, message = rednet.receive(SETUP_PROTOCOL_FILTER)
+        print(message)
+        message = textutils.unserializeJSON(message)
+        local senderIsTop = message.isTop
+        if senderIsTop then
+            foundTop = true
+            redstone.setOutput(CLUTCH_FACE, true)
+        end
+    end
+
+    -- from top to bottom -> go through every floor and assign them a floor number
+    local curr = 0
+    local foundBottom = false
+    local prevComputer = nil
+    redstone.setOutput(GEAR_SHIFT_FACE, not GEAR_SHIFT_ON_IS_UP)
+    redstone.setOutput(CLUTCH_FACE, false)
+    while not foundBottom do
+        local senderId, message = rednet.receive(SETUP_PROTOCOL_FILTER)
+        message = textutils.unserializeJSON(message)
+        local computerId = message.computerId
+        
+        if computerId ~= prevComputer then
+            local messageToSend = {
+                setFloor = curr
+            }
+            table.insert(floors, curr)
+            rednet.send(computerId, textutils.serialiseJSON(messageToSend), SETUP_PROTOCOL_FILTER)
+            curr = curr - 1
+        end
+
+        local senderIsBottom = message.isBottom
+        if senderIsBottom then
+            foundBottom = false
+            redstone.setOutput(CLUTCH_FACE, true)
+        end
+    end
+
+    print(string.format('Finsihed Setup.\n Floors: %s', textutils.serialise(floors)))
+end
+
+local function listen ()
+    while true do
+        local senderId, message = rednet.receive(PROTOCOL_FILTER)
+        message = textutils.unserializeJSON(message)
+        local senderFloor = message.floor
+        local senderIsRequesting = message.requesting
+        local elevatorIsAtFloor = message.elevatorIsAtFloor
+        if senderIsRequesting then
+            targetFloor = senderFloor
+        end
+        if elevatorIsAtFloor then
+            currFloor = elevatorIsAtFloor
+        end
+    end
 end
 
 local function loop()
     while true do
+        if targetFloor and currFloor then
+            if targetFloor == currFloor then
+                print('found floor')
+                state = 'idle'
+            elseif targetFloor > currFloor then
+                state = 'up'
+            elseif targetFloor < currFloor then
+                state = 'down'
+            end
+        end
+
         if state == 'idle' then
             redstone.setOutput(CLUTCH_FACE, true)
         elseif state == 'up' then
