@@ -1,6 +1,6 @@
 SCREEN_PROTOCOL_FILTER = 'ELEVATOR_SCREEN'
 PROTOCOL_FILTER = 'ELEVATOR'
-MODEM_FACE = 'FRONT'
+MODEM_FACE = 'RIGHT'
 
 rednet.open(MODEM_FACE)
 local floors = {}
@@ -42,10 +42,11 @@ end
 
 local function redstoneListen()
     while true do
+        sleep(0.05)
         local selected = nil
         local minFloor = math.huge
         local maxFloor = -math.huge
-        for k, v in pairs(floorsList) do
+        for k, v in pairs(floors) do
             if k < minFloor then
                 minFloor = k
             end
@@ -54,9 +55,11 @@ local function redstoneListen()
             end
         end
         if redstone.getInput('left') then
+            print('min')
             selected = minFloor
         end
         if redstone.getInput('right') then
+            print('max')
             selected = maxFloor
         end
         if selected then
