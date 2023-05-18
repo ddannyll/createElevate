@@ -1,78 +1,54 @@
+-- expects version 1.6.6 of basalt
+ 
 SCREEN_PROTOCOL_FILTER = 'ELEVATOR_SCREEN'
 PROTOCOL_FILTER = 'ELEVATOR'
-MODEM_FACE = 'RIGHT'
-
+MODEM_FACE = 'FRONT'
+MONITOR_FACE = 'BOTTOM'
+ 
+local basalt = require('basalt')
+ 
 rednet.open(MODEM_FACE)
+local mon = peripheral.wrap(MONITOR_FACE)
+mon.setTextScale(0.5)
+ 
 local floors = {}
-
-local function getFloorsAsString(floors)
-    local str = ""
-    for key, _ in pairs(floors) do
-        str = str .. ', '.. key
-    end
-    return str
+local buttons = {}
+local monitorFrame = basalt.createFrame():setMonitor({[1]={MONITOR_FACE}})
+ 
+local function callToFloor(floorNumber)
+    local messageToSend = {
+        floor = floorNumber,
+        requesting = true
+    }
+    rednet.broadcast(textutils.serialiseJSON(messageToSend), PROTOCOL_FILTER)
 end
-
-local function loop()
-    while true do
-        print(string.format('Please enter a floor: %s', getFloorsAsString(floors)))
-        local selected = tonumber(read())
-        if floors[selected] then
-            local messageToSend = {
-                floor = selected,
-                requesting = true,
-                elevatorIsAtFloor = false
-            }
-            rednet.broadcast(textutils.serialiseJSON(messageToSend), PROTOCOL_FILTER)
-        end
-        sleep(0.05)
+ 
+local function updateButtons()
+    -- clear existing buttons
+    for i = 1, #buttons, 1 do
+        buttons[i]:remove()
+    end
+ 
+    for i = 1, #floors, 1 do
+        local currButton = monitorFrame
+            :addButton()
+            :setSize('parent.w - 2', 3  )
+            :setPosition(2 , (i - 1) * 3 + 2 )
+            :setText(floors[i])
+            :setBorder(colors.black, "bottom")
+            :onClick(function() callToFloor(floors[i]) end)
+        table.insert(buttons, currButton)
     end
 end
-
+ 
 local function listen()
     while true do
-        local sender, message = rednet.receive(SCREEN_PROTOCOL_FILTER)
+        local _, message = rednet.receive(SCREEN_PROTOCOL_FILTER)
         message = textutils.unserialiseJSON(message)
-        floors = {}
-        for _, floor in pairs(message) do
-            floors[floor] = true
-        end
+        floors = message
+        updateButtons()
+        sleep(2)
     end
 end
-
-local function redstoneListen()
-    while true do
-        sleep(0.05)
-        local selected = nil
-        local minFloor = math.huge
-        local maxFloor = -math.huge
-        for k, v in pairs(floors) do
-            if k < minFloor then
-                minFloor = k
-            end
-            if k > maxFloor then
-                maxFloor = k
-            end
-        end
-        if redstone.getInput('left') then
-            print('min')
-            selected = minFloor
-        end
-        if redstone.getInput('right') then
-            print('max')
-            selected = maxFloor
-        end
-        if selected then
-            local messageToSend = {
-                floor = selected,
-                requesting = true,
-                elevatorIsAtFloor = false
-            }
-            rednet.broadcast(textutils.serialiseJSON(messageToSend), PROTOCOL_FILTER)
-        end
-    end
-
-end
-
-parallel.waitForAll(loop, listen, redstoneListen)
-
+ 
+parallel.waitForAll(basalt.autoUpdate, listen)
